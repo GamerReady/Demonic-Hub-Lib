@@ -1,0 +1,343 @@
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local players = game.Players
+local player = players.LocalPlayer
+
+local Library = {
+	Connections = {}, Disabled = false
+}
+
+local function Validate(Values, options)
+	for i,v in pairs(Values) do
+		if options[i] == nil then
+			options[i] = v
+		end
+	end
+
+	return options
+end
+
+local function DarkenColor(RGB)
+	RGB = Validate({
+		Color = "0,0,0",
+		Thickness = "0.8"
+	}, RGB or {})
+	
+	local r = RGB.Color.r * RGB.Thickness
+	local g = RGB.Color.g * RGB.Thickness
+	local b = RGB.Color.b * RGB.Thickness
+	return Color3.new(r, g, b)
+end
+
+local function Create(Name, Parent, Properties, Children)
+	local Object = Instance.new(Name)
+	for i, v in next, Properties or {} do
+		Object[i] = v
+	end
+	for i, v in next, Children or {} do
+		v.Parent = Object
+	end
+	if Parent then
+		Object.Parent = Parent
+	end
+	return Object
+end
+
+local function AddConnection(Signal, Function)
+	if (not Library:IsRunning()) then return end
+	local Connection = Signal:Connect(Function)
+	table.insert(Library.Connections, Connection)
+	return Connection
+end
+
+function Library:Remove()
+	for i, Connection in pairs(Library.Connections) do Connection:Disconnect() end
+end
+
+local function AddDraggingFunctionality(DragPoint, Main)
+	pcall(function()
+		local Dragging, DragInput, MousePos, FramePos = false,nil,nil,nil
+		DragPoint.InputBegan:Connect(function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+				Dragging = true
+				MousePos = Input.Position
+				FramePos = Main.Position
+
+				Input.Changed:Connect(function()
+					if Input.UserInputState == Enum.UserInputState.End then
+						Dragging = false
+					end
+				end)
+			end
+		end)
+		DragPoint.InputChanged:Connect(function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseMovement then
+				DragInput = Input
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(Input)
+			if Input == DragInput and Dragging then
+				local Delta = Input.Position - MousePos
+				TweenService:Create(Main, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale,
+						FramePos.Y.Offset + Delta.Y) }):Play()
+			end
+		end)
+	end)
+end
+
+local ScreenGui = Create("ScreenGui", game.CoreGui, {
+	ResetOnSpawn = false,
+	ZIndexDehavior = Enum.ZIndexBehavior.Sibling
+})
+
+function Library.LoadMain()
+	local NuclearBomba = true
+	
+	local CanvasGroup = Create("CanvasGroup", ScreenGui, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+		BorderColor3 = Color3.new(0, 0, 0),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0, 500, 0, 350),
+		Visible = true,
+	}, {
+		Create("UICorner", {
+			CornerRadius = UDim.new(0, 6)
+		})
+	})
+
+	local TopBar = Create("Frame", CanvasGroup, {
+		Size = UDim2.new(1, 0, 0, 35),
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	}, {
+		Create("UIStroke", {
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			LineJoinMode = Enum.LineJoinMode.Miter,
+			Color = Color3.fromRGB(40, 40, 40),
+			Thickness = 0.6000000238418579
+		})
+	})
+
+	local NameHub = Create("TextLabel", TopBar, {
+		Size = UDim2.new(0, 140, 0, 34),
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0.0219999999, 0, 0, 0),
+		BorderSizePixel = 0,
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		RichText = true,
+		TextColor3 = Color3.fromRGB(230, 230, 230),
+		Text = "<font color=\"#dc2828\">Demonic</font> Hub",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 15,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+		LineHeight = 0.8999999761581421
+	})
+	local SomeTextTopBar = Create("TextLabel", TopBar, {
+		Size = UDim2.new(0, 340, 0, 34),
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0.319999993, 0, 0, 0),
+		BorderSizePixel = 0,
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		RichText = true,
+		TextColor3 = Color3.fromRGB(200, 200, 200),
+		Text = `Yo <font color=\"#dc2828\">{player.Name}</font>. Welcome to <font color=\"#dc2828\">Demonic</font> Hub!`,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 15,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal),
+		LineHeight = 0.8999999761581421
+	})
+
+	local TabHolder = Create("Frame", CanvasGroup, {
+		Name = "TabHolder",
+		BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+		BackgroundTransparency = 1.000,
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 150, 1, 0)
+	}, {
+		Create("UIStroke", {
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Color = Color3.fromRGB(40, 40, 40),
+			LineJoinMode = Enum.LineJoinMode.Miter,
+			Thickness = 0.6
+		})
+	})
+
+	local ScrollingFrame = Create("ScrollingFrame", TabHolder, {
+		Active = true,
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 1.000,
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0.0971428603, 0),
+		Size = UDim2.new(0, 150, 0, 316),
+		ScrollBarThickness = 3
+	}, {
+        Create("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 5)
+        }),
+        Create("UIPadding", {
+            PaddingBottom = UDim.new(0, 9),
+            PaddingLeft = UDim.new(0, 8),
+            PaddingRight = UDim.new(0, 10),
+            PaddingTop = UDim.new(0, 9)
+        })
+	})
+	
+	local InsertTab = Create("Frame", CanvasGroup, {
+		Name = "InsertTab",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 1.000,
+		BorderColor3 = Color3.fromRGB(0, 0, 0),
+		BorderSizePixel = 0,
+		Position = UDim2.new(0.301999807, 0, 0.0971428603, 0),
+		Size = UDim2.new(0, 349, 0, 316)
+	}, {
+		Create("UIPageLayout", {
+			FillDirection = Enum.FillDirection.Vertical,
+			SortOrder = Enum.SortOrder.LayoutOrder
+		}),
+	})
+
+	AddDraggingFunctionality(TopBar, CanvasGroup)
+	
+	local TableTab = {}
+	function TableTab.AddTab(name: str)
+		local EnabledAnimation = false
+		
+		-- #TabButton
+		local TextButton = Create("TextButton", ScrollingFrame, {
+			BackgroundColor3 = Color3.fromRGB(220, 40, 40),
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, 30),
+			AutoButtonColor = false,
+			Font = Enum.Font.Gotham,
+			Text = "",
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextSize = 14.000,
+			TextStrokeColor3 = Color3.fromRGB(254, 254, 254),
+			TextXAlignment = Enum.TextXAlignment.Left
+		})
+
+		local UICorner = Create("UICorner", TextButton, {
+			CornerRadius = UDim.new(0, 4)
+		})
+
+		local UIPadding = Create("UIPadding", TextButton, {
+			PaddingLeft = UDim.new(0, 12),
+			PaddingRight = UDim.new(0, 12)
+		})
+
+		local UIGradient = Create("UIGradient", TextButton, {
+			Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(220, 40, 40)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(140, 0, 0))},
+			Rotation = 90
+		})
+
+		local TextLabel = Create("TextLabel", TextButton, {
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 1.000,
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 1, 0),
+			Font = Enum.Font.Gotham,
+			TextColor3 = Color3.fromRGB(235, 235, 235),
+			TextSize = 14.000,
+			TextXAlignment = Enum.TextXAlignment.Left
+		})
+
+		local CoolBorder = Create("Frame", TextButton, {
+			Name = "CoolBorder",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 1.000,
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderSizePixel = 0,
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.new(0, 130, 0, 29)
+		})
+
+		local UIStroke = Create("UIStroke", CoolBorder, {
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			Transparency = 0.8
+		})
+
+		local UICorner_2 = Create("UICorner", CoolBorder, {
+			CornerRadius = UDim.new(0, 3)
+		})
+		
+		-- #TabPage
+		
+		local TabPage = Create("ScrollingFrame", InsertTab, {
+			Active = true,
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 1.000,
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderSizePixel = 0,
+			Position = UDim2.new(0, 0, 0.0971428603, 0),
+			Size = UDim2.new(1, 0, 1, 0),
+			ScrollBarThickness = 3,
+		}, {
+			Create("UIListLayout", {
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				Padding = UDim.new(0, 5)
+			}),
+			Create("UIPadding", {
+				PaddingBottom = UDim.new(0, 9),
+				PaddingLeft = UDim.new(0, 8),
+				PaddingRight = UDim.new(0, 10),
+				PaddingTop = UDim.new(0, 9)
+			})
+		})
+		
+		-- #TabAnimations
+		
+		TweenService:Create(TextButton, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(UIStroke, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Thickness = 0}):Play()
+		TweenService:Create(TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(150,150,150)}):Play()
+		
+		if NuclearBomba then
+			TweenService:Create(TextButton, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+			TweenService:Create(UIStroke, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Thickness = 1}):Play()
+			TweenService:Create(TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(235, 235, 235)}):Play()
+			InsertTab.UIPageLayout:JumpTo(TabPage)
+		end
+		
+		AddConnection(TextButton.MouseButton1Click, function()
+			for _, Tab in next, TabHolder:GetChildren() do
+				if Tab:IsA("TextButton") then
+					TweenService:Create(Tab, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+					TweenService:Create(Tab.CoolBorder.UIStroke, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Thickness = 0}):Play()
+					TweenService:Create(Tab.TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(150,150,150)}):Play()
+				end
+			end
+			
+			TweenService:Create(TextButton, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+			TweenService:Create(UIStroke, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Thickness = 1}):Play()
+			TweenService:Create(TextLabel, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(235, 235, 235)}):Play()
+
+			InsertTab.UIPageLayout:JumpTo(TabPage)
+		end)
+		
+		AddConnection(TextButton.MouseEnter, function()
+			TweenService:Create(TextButton, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = Color3.fromRGB(235, 235, 235)}):Play()
+		end)
+		
+		AddConnection(TextButton.MouseLeave, function()
+			TweenService:Create(TextButton, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = Color3.fromRGB(235, 235, 235)}):Play() 
+		end)
+	end
+	return TableTab
+end
+return Library
